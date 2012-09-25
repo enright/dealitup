@@ -1,0 +1,11 @@
+{
+    "name": "dealitup",
+    "description": "drag and drop playing cards",
+    "version": "0.0.1",
+    "author": "Bill Enright <bill@yisup.com>",
+    "repository": "git://github.com/enright/dealitup",
+    "main": "./index",
+    "dependencies": {
+      "express": "3.x"
+    }
+}

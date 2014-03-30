@@ -1,0 +1,254 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+  <head>
+    <title>Draw and Discard Function</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.js"></script>
+<!-- 
+    <script src="http://s3.amazonaws.com/dealitupdemo/javascripts/clientImageUtils.js"></script>
+ -->
+    <style type="text/css">#cards { height:80px; }</style>
+    <style type="text/css">ol.hand { display:inline; list-style-type:none; margin:0; padding:0; height:70px; width:300px; float:left; }</style>
+    <style type="text/css">li.hand { display:inline; }</style>
+    <style type="text/css">img.hand { display:inline; height:64px; width:43px; padding:5px; }</style>
+    <style type="text/css">div.cardPile { height:70px; width:49px; padding:2px; float:left; }</style>
+    <style type="text/css">img.faceDownCard { height:70px; width:49px; padding:2px; }</style>
+    <style type="text/css">img.discardFaceDownCard { opacity:0.2; }</style>
+    <style type="text/css">img.faceUpCardHidden { display:none; }</style>
+    <style type="text/css">img.faceUpCardShown { display:inline; height:64px; width:43px; padding:5px; }</style>
+    <style type="text/css">#cardList .ui-selected { background: #F39814; }</style>
+    <style type="text/css">img.handDrop { background: #F39814; }</style>
+  </head>
+  <body>
+    <div id="container">
+      <div id="cards">
+        <ol id="cardList" class="hand"></ol>
+        <div class="cardPile">
+          <img id="draw" src="http://s3.amazonaws.com/dealitupdemo/cardImages/back102.gif" class="faceDownCard" />
+        </div>
+        <div class="cardPile">
+          <img id="discard" src="https://s3.amazonaws.com/dealitupdemo/cardImages/back102.gif" class="faceDownCard discardFaceDownCard" />
+        </div>
+      </div>
+      <p>Click on the draw pile to draw a card. When your hand fills up, drag to swap a card or to put the new card in the discard pile.</p>
+      <button id='euchre'>Euchre Deck</button>
+      <div id="images" style="display: none">
+        <div id="cardImages"></div>
+      </div>
+      <script>
+// create a closure around a $container of images
+// and provide functions for manipulating those images
+var imageBucket = function (bucketQuery) {
+
+    // get an html element for the image found by id
+    // return undefined if not found
+    function get(id) {
+        var image,
+            collection = bucketQuery.find('#' + id);
+        if (collection.length > 0) {
+            image = collection[0];
+        }
+        return image;
+    }
+
+    // create and add an image element with a given id
+    function add(id, imageName, onLoad) {
+        bucketQuery.append('<img src=\"' + imageName + '\" id=\"' + id + '\" />');
+        if (onLoad !== undefined) {
+            bucketQuery.children().last().load(onLoad);
+        }
+    }
+
+    function addMany(images, onLoad) {
+        var i,
+            length;
+        for (i = 0, length = images.length; i < length; i += 1) {
+            add(images[i].imageId, images[i].imageName, onLoad);
+        }
+    }
+    
+    // remove an image element with a given id
+    function remove(id) {
+        bucketQuery.find('#' + id).remove();
+    }
+
+    // remove all images
+    function removeAll() {
+        bucketQuery.find('img').remove()
+    }
+    
+    // return a dictionary of html elements by id
+    function imageSet() {
+        var images = {};
+        bucketQuery.find('img').each(function (index, element) {
+            images[element.id] = element;
+        });
+        return images;
+    }
+
+    return {
+        get: get,
+        add: add,
+        addMany: addMany,
+        remove: remove,
+        removeAll: removeAll,
+        imageSet: imageSet
+    };
+};
+
+  $(document).ready(function () {
+	var playerCards = [], // cards the user owns
+		suits = [ 'c', 'd', 'h', 's' ],
+		cardImagesBucket = imageBucket($('#images > #cardImages')),
+		cardsInHand = $('#cardList'),
+		drawPile = $('#draw'),
+		considerChoose,
+		discardPile = $('#discard'),
+		discardChoose;
+
+	function handleDiscard(src, id) {
+	
+		// set up the UI with a discarded card
+        function setupDiscardUI(src, id) {
+            // get rid of droppable on discard and discardChoose
+            discardPile.droppable('destroy');
+            // destroy the old discardChoose img and create a new one
+            if (discardChoose !== undefined) {
+                discardChoose.droppable('destroy');
+                $(discardChoose).remove();
+            }
+            
+            // create the new discard choose
+            $(discardPile).after('<img id="discardChoose", class="faceUpCardHidden", style="z-index:2" />');
+		    discardChoose = $('#discardChoose');
+		
+		    // display the image of the discarded card
+            discardChoose.attr('src',src);
+            discardChoose.attr('id', id);
+            
+            // show it in the correct position 
+            discardChoose.removeClass('faceUpCardHidden').addClass('faceUpCardShown');
+            $(discardChoose).position({my:'left top', at:'left top', of:'#discard' }); 
+        }
+        
+        // hide the considered card     
+        considerChoose.removeClass('faceUpCardShown').addClass('faceUpCardHidden');
+        // set up the discard
+        setupDiscardUI(src, id);	  
+        // set up selecting  
+        cardsInHand.selectable({ filter: 'img' });
+	}
+	
+    // dropping on the discard pile...just shows that card on the top
+    function discardDrop(event, ui) {
+        handleDiscard(ui.draggable.attr('src'), ui.draggable.attr('id'));
+    }
+
+    // dropping on a card in the hand, take the new card src and id
+    // discard the old one
+    function handDrop(event, ui) {
+        // remember the image and id from this card
+        var oldSrc = $(this).attr('src'),
+            oldId = $(this).attr('id');
+            
+        // set the card receiving the drop to the new image and id
+        $(this).attr('src', ui.draggable.attr('src'));
+        $(this).attr('id', ui.draggable.attr('id'));
+        
+        handleDiscard(oldSrc, oldId);	
+    }
+
+	function considerCard(cardToConsider) {
+	
+	    // if we don't have 5 cards yet, then we just take the card
+	    // and put it in the hand
+	    if (playerCards.length < 5) {
+	    	playerCards[playerCards.length] = cardToConsider;
+
+	        // add the card to the list (img inside an li)
+            cardsInHand.append('<li class="hand"><img class="hand" src=\"' + cardToConsider.imageName + '\" id=\"' + cardToConsider.imageId + '\" /></li>');
+            // reset selectables
+            cardsInHand.find('.ui-selectee').removeClass('ui-selected ui-selectee');
+            cardsInHand.selectable('destroy');
+            cardsInHand.selectable({ filter: 'img' });
+            // the new card img is droppable and accepts class handDrop
+            cardsInHand.find('#'+cardToConsider.imageId).droppable({ hoverClass: 'handDrop', drop: handDrop });
+        } else {
+            // not selectable while choosing
+            cardsInHand.find('.ui-selectee').removeClass('ui-selected ui-selectee');
+            cardsInHand.selectable('destroy');
+
+            // destroy the old discardChoose img and create a new one
+            if (considerChoose !== undefined) {
+                considerChoose.draggable('destroy');
+                $(considerChoose).remove();
+            }
+            $(drawPile).after('<img id="considerChoose", class="faceUpCardHidden", style="z-index:3" />');
+		    considerChoose = $('#considerChoose');
+
+            considerChoose.attr('src', cardToConsider.imageName);
+            considerChoose.attr('id', cardToConsider.imageId);
+            considerChoose.removeClass('faceUpCardHidden').addClass('faceUpCardShown');
+            $(considerChoose).position({my:'left top', at:'left top', of:'#draw' }); 
+            // discard choose may be undefined, if it is, make it a drop target
+            if (discardChoose !== undefined) {
+                $(discardChoose).droppable({ hoverClass: 'handDrop', drop: discardDrop })
+            }
+
+            // make the card choice draggable
+            considerChoose.draggable({ containment: '#cards', revert: 'invalid', revertDuration: 100, helper: 'clone', opacity: 0.7 });          
+        }
+	}
+
+    // this discard pile is a drop target
+	discardPile.droppable({ hoverClass: 'handDrop', drop: discardDrop });
+
+	// create a deck and shuffle it
+	var deck;
+	$.ajax({
+		type: 'POST',
+		url: '/deck',
+		success: function (msg) {
+			deck = msg;
+			$.ajax({
+				type: 'PUT',
+				contentType: 'application/json',
+				data: JSON.stringify({ update: 'shuffle', id: msg.deck }),
+				url: '/deck'
+			});
+		}
+	});
+	
+    // click on the deck to draw a new card
+	drawPile.click(function () {
+		$.ajax({
+			type: 'PUT',
+			contentType: 'application/json',
+			data: JSON.stringify({ update: 'draw', id: deck.deck }),
+			url: '/deck',
+			success: function (msg) {
+				var imageName = 'https://s3.amazonaws.com/dealitupdemo/cardImages/' + msg.card + '.gif',
+					image;
+   
+				// if there is no img with that id, create one
+				image = cardImagesBucket.get(msg.card);
+				if (image === undefined) {
+					cardImagesBucket.add(msg.card, imageName);
+				}
+
+				considerCard({ imageId: msg.card, imageName : imageName });
+			}
+		});
+	});
+	
+	$('#euchre').click(function () {
+		// future 'special' deck web service implementation
+		//deck = createDeck(euchreDeck());
+		//deck.shuffle();
+	});
+ });           
+      </script>
+    </div>
+  </body>
+</html>

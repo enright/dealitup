@@ -1,70 +1,84 @@
 var express = require('express'),
-	connect = require('connect'),
-	sessionStore = new express.session.MemoryStore(),
-	jade = require('jade'),
 	deck = require('./deck'),
-	app = express.createServer(),
+	uuid = require('uuid'),
+	app = express(),
 	decks = {};
 	
 // Configuration
 app.configure(function () {
-    // use jade
-    app.set('views', __dirname + '/views');
-    app.set('view engine', 'jade');
+	// some restful service calls (POST, PUT)
+	// send data in the 'body' of the request
+	// so we need to let express parse the body to get the parameters out
     app.use(express.bodyParser());
-    app.use(express.methodOverride());
 
-	// use cookies for sessions cookie must come before session
-	app.use(express.cookieParser());
-	//session cookies stored only in memory
-	app.use(express.session({ store: sessionStore, secret: 'cool beans' }));
-	
+	// this enables the code below that specifies the functions
+	// executed for specific URL requests
     app.use(app.router);
+});
 
-    // serve up card images
-    app.use(express.static(__dirname + '/public'));
+// at the root of our server, a get request will simply return the 
+// drag and drop card page, which is an html page, not a service
+app.get('/', function (req, res) {
+	res.sendfile('deck.html');
+});
+
+// WEB SERVICE CALLS
+
+// get a deck
+app.get('/deck/:id', function (req, res) {
+	var id = req.params.id;
+	if (decks.hasOwnProperty(id)) {
+    	res.jsonp(201, { deck: id, cardsLeft: decks[id].cardsLeft() });
+    } else {
+    	res.jsonp(404, { error: 'deck id not found' });
+    }
 });
 
 // create a deck
-app.get('/new', function (req, res) {
-	decks[req.session.id] = deck.createDeck();
-    res.jsonp(201, { cardLeft: decks[req.session.id].cardsLeft() });
+app.post('/deck', function (req, res) {
+	var aDeck = deck.createDeck(), // create a deck
+		aUuid = uuid.v4(); // pair it with this unique identifier
+		
+	// store the deck
+	decks[aUuid] = aDeck;
+	
+	// give the client the deck id 201 === created
+    res.jsonp(201, { deck: aUuid, cardsLeft: aDeck.cardsLeft() });
 });
 
-// create a deck
-app.get('/neweuchre', function (req, res) {
-	decks[req.session.id] = deck.createEuchreDeck();
-    res.jsonp(201, { cardLeft: decks[req.session.id].cardsLeft() });
+// delete a deck
+app.delete('/deck/:id', function (req, res) {
+	var id = req.params.id;
+	console.log('deck id ', id, '\n decks \n', decks);
+	if (decks.hasOwnProperty(id)) {
+		delete decks[id];
+    	res.jsonp(200, { deck: id }); // 200 === succeeded
+    } else {
+    	res.jsonp(404, { error: 'deck id not found' });
+    }
 });
 
-// shuffle a deck - error if no deck
-app.get('/shuffle', function (req, res) {
-	var aDeck = decks[req.session.id];
-	if (aDeck !== undefined) {
-		aDeck.shuffle();
-		res.jsonp(200, { cardLeft: decks[req.session.id].cardsLeft() });
-	} else {
-		res.jsonp(500, { error: 'no deck' });
-	}
-});
-
-// draw a card - error if no deck
-app.get('/draw', function (req, res) {
-	var aDeck = decks[req.session.id],
-		drawnCard;
-	if (aDeck !== undefined) {
-		drawnCard = aDeck.draw();
-		if (drawnCard !== undefined) {
-			res.jsonp(200, { card: drawnCard });
+// modify a deck - error if no deck
+// body contains parameters (so no id in the url)
+app.put('/deck', function (req, res) {
+	var id = req.body.id,
+		update = req.body.update;
+	if (decks.hasOwnProperty(id)) {
+		if (update === 'shuffle') {
+			decks[id].shuffle();
+			res.jsonp(200, { cardsLeft: decks[id].cardsLeft() });
+		} else if (update === 'draw') {
+			res.jsonp(200, { card: decks[id].draw() });
 		} else {
-			res.jsonp(500, { error: 'no more cards' });
+    		res.jsonp(400, { error: 'unknown update' }); // 400 === bad request
 		}
 	} else {
-		res.jsonp(500, { error: 'no deck' });
+    	res.jsonp(404, { error: 'deck id not found' });
 	}
 });
 
-console.log("Express version %s\n", express.version);
+
+
+console.log("restfulDeckServer running localhost:3001");
 app.listen(3001);
-//console.log("Express server listening on port %d\n", app.address().port);
 

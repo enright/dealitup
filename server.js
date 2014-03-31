@@ -1,6 +1,8 @@
 var express = require('express'),
 	deck = require('./deck'),
 	uuid = require('uuid'),
+	aws = require('aws-sdk'),
+	dynamo,
 	app = express(),
 	decks = {};
 	
@@ -14,12 +16,51 @@ app.configure(function () {
 	// this enables the code below that specifies the functions
 	// executed for specific URL requests
     app.use(app.router);
+    
+    // load the amazon credentials
+    // note this 'clobbers' any previous configuration
+    aws.config.loadFromPath('./amazonCred.json');
+    
+	dynamo = new aws.DynamoDB();
 });
 
 // at the root of our server, a get request will simply return the 
 // drag and drop card page, which is an html page, not a service
 app.get('/', function (req, res) {
 	res.sendfile('deck.html');
+});
+
+app.get('/listTables', function (req, res) {
+	dynamo.listTables(function(err, data) {
+	  if (err) {
+	  	res.json(err);
+	  } else {
+	  	res.json(data.TableNames);
+	  }
+	});
+});
+
+app.get('/createTable', function (req, res) {
+	var tableDef = {
+		TableName: 'dealItUp',
+		AttributeDefinitions: [
+			{ AttributeName: 'id', AttributeType: 'S' }
+		],
+		KeySchema:[
+			{ AttributeName: 'id', KeyType: 'HASH' }
+		],
+		ProvisionedThroughput: {
+			ReadCapacityUnits: 12,
+			WriteCapacityUnits: 6,
+		}
+	};
+	dynamo.createTable(tableDef, function(err, data) {
+	  if (err) {
+	  	res.json(err);
+	  } else {
+	  	res.json(data.TableDescription);
+	  }
+	});
 });
 
 // WEB SERVICE CALLS

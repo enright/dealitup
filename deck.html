@@ -138,6 +138,12 @@ var imageBucket = function (bucketQuery) {
         setupDiscardUI(src, id);	  
         // set up selecting  
         cardsInHand.selectable({ filter: 'img' });
+        $.ajax({
+        	type: 'PUT',
+        	url: '/deck',
+        	contentType: 'application/json',
+        	data: JSON.stringify({ id: deck.id, update: 'discard', card: id })
+        });
 	}
 	
     // dropping on the discard pile...just shows that card on the top
@@ -209,12 +215,14 @@ var imageBucket = function (bucketQuery) {
 	$.ajax({
 		type: 'POST',
 		url: '/deck',
+		contentType: 'application/json',
+		data: JSON.stringify({ type: 'standard' }),
 		success: function (msg) {
 			deck = msg;
 			$.ajax({
 				type: 'PUT',
 				contentType: 'application/json',
-				data: JSON.stringify({ update: 'shuffle', id: msg.deck }),
+				data: JSON.stringify({ update: 'shuffle', id: msg.id }),
 				url: '/deck'
 			});
 		}
@@ -225,7 +233,7 @@ var imageBucket = function (bucketQuery) {
 		$.ajax({
 			type: 'PUT',
 			contentType: 'application/json',
-			data: JSON.stringify({ update: 'draw', id: deck.deck }),
+			data: JSON.stringify({ update: 'draw', id: deck.id }),
 			url: '/deck',
 			success: function (msg) {
 				var imageName = 'https://s3.amazonaws.com/dealitupdemo/cardImages/' + msg.card + '.gif',

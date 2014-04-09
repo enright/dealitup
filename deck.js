@@ -1,10 +1,10 @@
 // create a deck with supplied cards
 // standard deck is supplied if cards are not
-function createDeck(cards) {
+function createDeck(pcards, pdrawn, pdiscard) {
 	var deck = {},
-		drawn = [],
-		discard = [],
-		top;
+		cards = pcards,
+		drawn = pdrawn || [],
+		discard = pdiscard || [];
 	
 	function standardDeck() {
 		// fill in a standard deck
@@ -31,9 +31,10 @@ function createDeck(cards) {
 	
 	if (cards === undefined) {
 		cards = standardDeck();
+		drawn = [];
+		discard = [];
 	}
 	
-	top = cards.length - 1;
 	
 	// To shuffle an array a of n elements (indices 0..n-1):
 	// for i from n - 1 downto 1 do
@@ -55,41 +56,71 @@ function createDeck(cards) {
 	
 	// draw a card from the top of the deck
 	// returns undefined if deck is depleted
-	function draw() {
-		var drawCard;
-		if (top > -1) {
-			drawCard = cards[top];
-			drawn[drawn.length] = drawCard;
-			top -= 1;
+	function drawCard() {
+		var drawnCard;
+		if (cards.length > 0) {
+			drawnCard = cards.pop();
+			drawn.push(drawnCard);
 		}
-		return drawCard;
+		return drawnCard;
 	}
 	
-	deck.draw = draw;
+	deck.draw = drawCard;
 	
 	// return how many cards are left to draw
 	function cardsLeft() {
-		return top + 1;
+		return cards.length;
 	}
 	
 	deck.cardsLeft = cardsLeft;
 	
-	// add a card to the discard list
-	function discard(card) {
-		discard[discard.length] = card;
+	function removeDrawn(card) {
+		// remove from drawn, put into discard
+		var i, length = drawn.length;
+		for (i = 0; i < length; i += 1) {
+			if (drawn[i] === card) {
+				drawn.splice(i, 1);
+				return;
+			}
+		}
 	}
 	
-	deck.discard = discard;
+	// add a card to the discard list
+	function discardCard(card) {
+		removeDrawn(card);
+		discard.push(card);
+	}
+	
+	deck.discard = discardCard;
 	
 	// shuffle and reset draw, discard and top
 	function resetShuffle() {
-		top = cards.length - 1;
-		draw = [];
+		// put all the cards together and shuffle
+		cards = cards.concat(drawn, discard);
+		drawn = [];
 		discard = [];
 		shuffle();
 	}
 	
 	deck.resetShuffle = resetShuffle;
+
+	function getCards() {
+		return cards;
+	}
+	
+	deck.getCards = getCards;
+	
+	function getDrawn() {
+		return drawn;
+	}
+	
+	deck.getDrawn = getDrawn;
+	
+	function getDiscard() {
+		return discard;
+	}
+	
+	deck.getDiscard = getDiscard;
 	
 	return deck;
 }
@@ -107,3 +138,12 @@ function createEuchreDeck () {
 }
 
 exports.createEuchreDeck = createEuchreDeck;
+
+function fromJSON(json) {
+	var data = JSON.parse(json);
+	return createDeck(data.cards, data.drawn, data.discard, data.top);
+}
+
+exports.fromJSON = fromJSON;
+	
+

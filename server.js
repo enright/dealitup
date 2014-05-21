@@ -81,9 +81,9 @@ function getDeck(data, callback) {
 				data.response = res.body;
 				callback(res.status, data);
 			} else {
-				drawPile = JSON.parse(res.body.deck);
-				drawn = JSON.parse(res.body.drawn);
-				discarded = JSON.parse(res.body.discarded);
+				drawPile = res.body.deck;
+				drawn = res.body.drawn;
+				discarded = res.body.discarded;
 				// once we have the deck data, instantiate deck and give it to callback
 				aDeck = deck.createDeck(drawPile, drawn, discarded);
 				data.deck = aDeck;
@@ -95,10 +95,10 @@ function getDeck(data, callback) {
 function putDeck(data, callback) {
 	request
 		.put('http://localhost:3002/deck')
-		.send({ id: data.id, deck: JSON.stringify(data.deck.getCards()),
-			drawn: JSON.stringify(data.deck.getDrawn()),
-			discarded: JSON.stringify(data.deck.getDiscard()),
-			removed: JSON.stringify([]) })
+		.send({ id: data.id, deck: data.deck.getCards(),
+			drawn: data.deck.getDrawn(),
+			discarded: data.deck.getDiscard(),
+			removed: [] })
 		.set('Content-type', 'application/json')
 		.set('Accept', 'application/json')
 		.end(function (err, res) {
@@ -130,9 +130,9 @@ app.get('/deck/:id', function (req, res) {
 			} else if (response.error) {
 				res.json(response.status, response.body);
 			} else {
-				drawPile = JSON.parse(response.body.deck);
-				drawn = JSON.parse(response.body.drawn);
-				discarded = JSON.parse(response.body.discarded);
+				drawPile = response.body.deck;
+				drawn = response.body.drawn;
+				discarded = response.body.discarded;
 				// we don't used 'removed' cards in this game, so we ignore response.body.removed
 				
 				// once we have the deck data, instantiate deck
@@ -163,10 +163,10 @@ app.post('/deck', function (req, res) {
 		
 	request
 		.post('http://localhost:3002/deck')
-		.send({ deck: JSON.stringify(aDeck.getCards()),
-			drawn: JSON.stringify(aDeck.getDrawn()),
-			discarded: JSON.stringify(aDeck.getDiscard()),
-			removed: JSON.stringify([]) })
+		.send({ deck: aDeck.getCards(),
+			drawn: aDeck.getDrawn(),
+			discarded: aDeck.getDiscard(),
+			removed: [] })
 		.set('Content-type', 'application/json')
 		.set('Accept', 'application/json')
 		.end(function (err, response) {

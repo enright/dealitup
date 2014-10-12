@@ -67,7 +67,7 @@ function fakeback(functionToFake) {
 
 function getDeck(data, callback) {
 	request
-		.get('http://localhost:3002/deck/' + data.id)
+		.get('http://localhost:5002/deck/' + data.id)
 		.set('Accept', 'application/json')
 		.end(function (err, res) {
 			var drawPile,
@@ -94,7 +94,7 @@ function getDeck(data, callback) {
 
 function putDeck(data, callback) {
 	request
-		.put('http://localhost:3002/deck')
+		.put('http://localhost:5002/deck')
 		.send({ id: data.id, deck: data.deck.getCards(),
 			drawn: data.deck.getDrawn(),
 			discarded: data.deck.getDiscard(),
@@ -118,7 +118,7 @@ function putDeck(data, callback) {
 app.get('/deck/:id', function (req, res) {
 	var id = req.params.id;
 	request
-		.get('http://localhost:3002/deck/' + id)
+		.get('http://localhost:5002/deck/' + id)
 		.set('Accept', 'application/json')
 		.end(function (err, response) {
 			var drawPile,
@@ -162,7 +162,7 @@ app.post('/deck', function (req, res) {
 	}
 		
 	request
-		.post('http://localhost:3002/deck')
+		.post('http://localhost:5002/deck')
 		.send({ deck: aDeck.getCards(),
 			drawn: aDeck.getDrawn(),
 			discarded: aDeck.getDiscard(),
@@ -193,7 +193,7 @@ app.delete('/deck/:id', function (req, res) {
 		res.json(400, { error: 'no id provided' });
 	} else {
 		request
-			.del('http://localhost:3002/deck/' + id)
+			.del('http://localhost:5002/deck/' + id)
 			.set('Accept', 'application/json')
 			.end(function (err, response) {
 				if (err) {
@@ -248,6 +248,6 @@ app.put('/deck', function (req, res) {
 });
 
 
-console.log("restfulDeckServer running localhost:3001");
-app.listen(3001);
+console.log("restfulDeckServer running localhost:5003");
+app.listen(5003);
 
